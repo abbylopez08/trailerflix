@@ -10,7 +10,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3008;
 const DATA_PATH = process.env.DATA_PATH || './database/trailerflix.json';
 
-let trailers= [];
+const TRAILERFLIX= [];
 
 try {
     const fileData = fs.readFileSync(DATA_PATH, 'utf-8');
