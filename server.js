@@ -14,7 +14,7 @@ const TRAILERFLIX= [];
 
 try {
     const fileData = fs.readFileSync(DATA_PATH, 'utf-8');
-    trailers= JSON.parse(fileData);
+    TRAILERFLIX= JSON.parse(fileData);
     console.log('Trailers cargados.');
 } catch (error) {
     console.error('Error al intentar leer el archivo de datos:', error.message);
@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/catalogo', (req, res) => {
-    if (trailers.length === 0) {
+    if (TRAILERFLIX.length === 0) {
         return res.status(404).json({ mensaje: 'No se pudo cargar el catálogo.' });
     }
     res.json(trailers);
@@ -34,7 +34,7 @@ app.get('/catalogo', (req, res) => {
 app.get('/titulo/:title', (req, res) => {
     const titulo = req.params.title.toLowerCase();
     
-    const matches = trailers.filter(item => 
+    const matches = TRAILERFLIX.filter(item => 
         item.titulo && item.titulo.toLowerCase().includes(titulo)
     );
 
@@ -46,23 +46,24 @@ app.get('/titulo/:title', (req, res) => {
 });
 
 app.get('/categoria/:cat', (req, res) => {
-    const categoria = req.params.cat.toLowerCase();
-
-    const matches = trailers.filter(item => 
-        item.categoria && item.categoria.toLowerCase().includes(categoria)
+    const catParam = req.params.cat.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    const resultados = TRAILERFLIX.filter(item => item.categoria && item.categoria.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === catParam
     );
 
-    if (matches.length === 0) {
-        return res.status(404).json({ mensaje: 'No hay resultados para esta categoría.' });
+    if (resultados.length === 0) {
+        return res.status(404).json({ 
+            mensaje: `No hay resultados para la categoría: ${req.params.cat}` 
+        });
     }
 
-    res.json(matches);
+    res.json(resultados);
 });
 
 app.get('/reparto/:act', (req, res) => {
     const actor = req.params.act.toLowerCase();
 
-    const matches = trailers.filter(item => 
+    const matches = TRAILERFLIX.filter(item => 
         item.reparto && item.reparto.toLowerCase().includes(actor)
     );
 
@@ -87,7 +88,7 @@ app.get('/trailer/:id', (req, res) => {
         return res.status(400).json({ mensaje: 'El ID ingresado es inválido, por favor ingrese un número nuevamente.' });
     }
 
-    const item = trailers.find(item => item.id === Id || item.code === Id);
+    const item = TRAILERFLIX.find(item => item.id === Id || item.code === Id);
 
     if (!item) {
         return res.status(404).json({ mensaje: 'El número de ID no corresponde a ninguna pelicula.' });
