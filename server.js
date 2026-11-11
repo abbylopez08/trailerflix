@@ -10,33 +10,52 @@ app.use(express.json());
 const PORT = process.env.PORT || 3008;
 const DATA_PATH = process.env.DATA_PATH || './database/trailerflix.json';
 
-let trailers= [];
-
-try {
-    const fileData = fs.readFileSync(DATA_PATH, 'utf-8');
-    trailers= JSON.parse(fileData);
-    console.log('Trailers cargados.');
-} catch (error) {
-    console.error('Error al intentar leer el archivo de datos:', error.message);
+const datosCargados = () => {
+    try {
+        const datos = JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8'));
+        console.log('Trailers cargados.');
+        return datos;
+    } catch (error) {
+        console.error('Error al cargar el archivo de datos:', error.message);
+        return null;
+    };
 }
 
-app.get('/', (req, res) => {
+const TRAILERFLIX = datosCargados();
+
+app.use((req, res, next) => {
+    if (!TRAILERFLIX) {
+        return res.status(500).json({ mensaje: 'Error interno, no se pudo cargar el catálogo.' });
+    }
+    next();
+});
+
+app.get('/', (req, res,) => {
     res.send('<h1>Trailerflix</h1>');
 });
 
+const normalizar = (texto) =>
+    texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
 app.get('/catalogo', (req, res) => {
-    if (trailers.length === 0) {
+    if (TRAILERFLIX.length === 0) {
         return res.status(404).json({ mensaje: 'No se pudo cargar el catálogo.' });
     }
-    res.json(trailers);
+    res.json(TRAILERFLIX);
 });
 
+const MIN_LETRAS = 3;
+
 app.get('/titulo/:title', (req, res) => {
-    const titulo = req.params.title.toLowerCase();
+    const titulo = normalizar(req.params.title);
     
-    const matches = trailers.filter(item => 
+    const matches = TRAILERFLIX.filter(item => 
         item.titulo && item.titulo.toLowerCase().includes(titulo)
     );
+
+    if (titulo.length < MIN_LETRAS) {
+        return res.status(400).json({ mensaje: `La búsqueda debe tener al menos ${MIN_LETRAS} letras.` });
+    }
 
     if (matches.length === 0) {
         return res.status(404).json({ mensaje: 'No existen títulos que coincidan con la búsqueda.' });
@@ -46,11 +65,15 @@ app.get('/titulo/:title', (req, res) => {
 });
 
 app.get('/categoria/:cat', (req, res) => {
-    const categoria = req.params.cat.toLowerCase();
+    const categoria = normalizar(req.params.cat);
 
-    const matches = trailers.filter(item => 
-        item.categoria && item.categoria.toLowerCase().includes(categoria)
-    );
+    const matches = TRAILERFLIX.filter(item => {
+        if (!item.categoria) return false;
+        
+        const catItem = normalizar(item.categoria);
+
+        return catItem === categoria;
+    });
 
     if (matches.length === 0) {
         return res.status(404).json({ mensaje: 'No hay resultados para esta categoría.' });
@@ -60,9 +83,9 @@ app.get('/categoria/:cat', (req, res) => {
 });
 
 app.get('/reparto/:act', (req, res) => {
-    const actor = req.params.act.toLowerCase();
+    const actor = normalizar(req.params.act);
 
-    const matches = trailers.filter(item => 
+    const matches = TRAILERFLIX.filter(item => 
         item.reparto && item.reparto.toLowerCase().includes(actor)
     );
 
@@ -81,13 +104,13 @@ app.get('/reparto/:act', (req, res) => {
 });
 
 app.get('/trailer/:id', (req, res) => {
-    const Id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id, 10);
 
-    if (isNaN(Id)) {
+    if (isNaN(id)) {
         return res.status(400).json({ mensaje: 'El ID ingresado es inválido, por favor ingrese un número nuevamente.' });
     }
 
-    const item = trailers.find(item => item.id === Id || item.code === Id);
+    const item = TRAILERFLIX.find(trailer => trailer.id === id);
 
     if (!item) {
         return res.status(404).json({ mensaje: 'El número de ID no corresponde a ninguna pelicula.' });
