@@ -67,16 +67,14 @@ app.get('/titulo/:title', (req, res) => {
 app.get('/categoria/:cat', (req, res) => {
     const categoria = normalizar(req.params.cat);
 
-    const matches = TRAILERFLIX.filter(item => {
-        if (!item.categoria) return false;
-        
-        const catItem = normalizar(item.categoria);
-
-        return catItem === categoria;
-    });
+    const matches = TRAILERFLIX.filter(item =>
+        item.categoria && normalizar(item.categoria) === categoria
+    );
 
     if (matches.length === 0) {
-        return res.status(404).json({ mensaje: 'No hay resultados para esta categoría.' });
+        return res.status(404).json({
+            mensaje: `No hay resultados para la categoría: ${req.params.cat}`
+        });
     }
 
     res.json(matches);
@@ -85,20 +83,22 @@ app.get('/categoria/:cat', (req, res) => {
 app.get('/reparto/:act', (req, res) => {
     const actor = normalizar(req.params.act);
 
-    const matches = TRAILERFLIX.filter(item => 
-        item.reparto && item.reparto.toLowerCase().includes(actor)
+    if (actor.length < MIN_LETRAS) {
+        return res.status(400).json({ mensaje: `La búsqueda debe tener al menos ${MIN_LETRAS} letras.` });
+    }
+
+    const matches = TRAILERFLIX.filter(item =>
+        item.reparto && normalizar(item.reparto).includes(actor)
     );
 
     if (matches.length === 0) {
-        return res.status(404).json({ mensaje: 'No se encontraron títulos para el actor/actriz ingresado.' });
+        return res.status(404).json({ mensaje: `No se encontraron títulos para el actor/actriz: ${req.params.act}` });
     }
 
-    const result = matches.map(item => {
-        return {
-            titulo: item.titulo,
-            reparto: item.reparto
-        };
-    });
+    const result = matches.map(item => ({
+        titulo: item.titulo,
+        reparto: item.reparto
+    }));
 
     res.json(result);
 });
